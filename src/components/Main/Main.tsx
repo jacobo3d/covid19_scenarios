@@ -160,6 +160,7 @@ function timeSeriesToReduction(timeSeries: TimeSeries) {
 function Main() {
   const [logScale, setLogScale] = useState<boolean>(true)
   const [result, setResult] = useState<AlgorithmResult | undefined>()
+  const [userResult, setUserResult] = useState<AlgorithmResult | undefined>()
   const [scenarioState, scenarioDispatch] = useReducer(scenarioReducer, defaultScenarioState, /* initDefaultState */) // prettier-ignore
 
   // TODO: Can this complex state be handled by formik too?
@@ -171,7 +172,9 @@ function Main() {
     simulation: scenarioState.simulation.data,
   }
 
-  const canExport = Boolean(result?.deterministicTrajectory)
+  const hasResult = Boolean(result?.deterministicTrajectory)
+  const hasUserResult = Boolean(userResult?.deterministicTrajectory)
+  const canExport = Boolean(hasResult)
 
   function setScenarioToCustom(newParams: AllParams) {
     // NOTE: deep object comparison!
@@ -210,6 +213,8 @@ function Main() {
     const reduction = timeSeriesToReduction(timeSeries)
     scenarioDispatch(setContainmentData({ data: { reduction } }))
   }
+
+  function handleClickToCompareButton() {}
 
   const containmentData = makeTimeSeries(
     scenarioState.simulation.data.simulationTimeRange.tMin,
@@ -258,6 +263,8 @@ function Main() {
           validate={setScenarioToCustom}
         >
           {({ errors, touched, isValid }) => {
+            const canRun = isValid && severityTableIsValid(severity)
+
             return (
               <Form className="form">
                 <Row noGutters>
@@ -456,8 +463,8 @@ function Main() {
                       title={<h3 className="p-2 m-0 text-truncate">Results</h3>}
                       defaultCollapsed={false}
                     >
-                      <Row>
-                        <Col lg={8}>
+                      <Row noGutters>
+                        <Col>
                           <p>
                             {`This output of a mathematical model depends on model assumptions and parameter choices.
                                  We have done our best (in limited time) to check the model implementation is correct.
@@ -465,37 +472,59 @@ function Main() {
                                  Click on legend items to show/hide curves.`}
                           </p>
                         </Col>
-                        <Col lg={4}>
-                          <FormGroup>
-                            <Button
-                              className="run-button"
-                              type="submit"
-                              color="primary"
-                              disabled={
-                                !isValid || !severityTableIsValid(severity)
-                              }
-                            >
-                              Run
-                            </Button>
-                            <Button
-                              className={`export-button ${canExport ? '' : 'd-none'}`} // prettier-ignore
-                              type="submit"
-                              color="secondary"
-                              disabled={!canExport}
-                              onClick={() => result && exportResult(result)}
-                            >
-                              Export
-                            </Button>
-                            <FormSwitch
-                              id="logScale"
-                              label="Log scale"
-                              checked={logScale}
-                              onChange={checked => setLogScale(checked)}
-                            />
-                          </FormGroup>
+                      </Row>
+                      <Row noGutters className="mb-4">
+                        <Col>
+                          <div>
+                            <span className="">
+                              <Button
+                                className="run-button"
+                                type="submit"
+                                color="primary"
+                                disabled={!canRun}
+                              >
+                                Run
+                              </Button>
+                            </span>
+                            <span>
+                              <Button
+                                className="compare-button"
+                                type="button"
+                                color="success"
+                                onClick={() =>
+                                  hasResult && handleClickToCompareButton()
+                                }
+                              >
+                                Compare
+                              </Button>
+                            </span>
+                            <span>
+                              <Button
+                                className="export-button"
+                                type="button"
+                                color="secondary"
+                                disabled={!canExport}
+                                onClick={() =>
+                                  canExport && result && exportResult(result)
+                                }
+                              >
+                                Export
+                              </Button>
+                            </span>
+                          </div>
                         </Col>
                       </Row>
-                      <Row>
+                      <Row noGutters hidden={!result}>
+                        <Col>
+                          <FormSwitch
+                            id="logScale"
+                            label="Log scale"
+                            checked={logScale}
+                            onValueChanged={setLogScale}
+                          />
+                        </Col>
+                      </Row>
+                      <Row noGutters>
                         <Col>
                           <DeterministicLinePlot
                             data={result}
@@ -503,7 +532,7 @@ function Main() {
                           />
                         </Col>
                       </Row>
-                      <Row>
+                      <Row noGutters>
                         <Col>
                           <StochasticLinePlot
                             data={result}
@@ -511,11 +540,11 @@ function Main() {
                           />
                         </Col>
                       </Row>
-                      <Row>
-                        <Col lg={4}>
+                      <Row noGutters>
+                        <Col>
                           <PopTable result={result} rates={severity} />
                         </Col>
-                        <Col lg={8}>
+                        <Col>
                           <AgePlot data={result} rates={severity} />
                         </Col>
                       </Row>
